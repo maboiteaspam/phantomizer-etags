@@ -30,13 +30,15 @@ module.exports = function(grunt) {
             },
             "test":{
                 "options":{
-                    path:""
+                    path:"src/"
                 }
             }
         }
     });
     grunt.loadNpmTasks('grunt-docco');
     grunt.loadNpmTasks('grunt-gh-pages');
+    grunt.loadTasks('tasks');
+
     grunt.registerTask('cleanup-grunt-temp', [],function(){
         wrench.rmdirSyncRecursive(__dirname + '/.grunt', !true);
     });

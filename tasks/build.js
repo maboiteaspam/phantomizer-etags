@@ -7,24 +7,104 @@ module.exports = function(grunt) {
     //-
     var path        = require("path");
     var fs          = require("fs");
+    var crypto = require('crypto');
 
 
     grunt.registerMultiTask("phantomizer-etags", "Asset's Etags generator for phantomizer app", function(){
 
+
         var options = this.options({
-            routing:{},
-            target_path:"export/",
-            file_name:"sitemap.xml",
-            base_url:"http://localhost/"
-        });
-        // Recursively read directories contents
-        var files = [];
-        wrench.readdirRecursive('my_directory_name', function(error, curFiles) {
-            // curFiles is what you want
+            src:"src/",
+            format:{
+                "apache":"etags.apache.include",
+                "nginx":"etags.nginx.include"
+            },
+            output:"output/"
         });
 
-        grunt.log.ok();
+        var eol = "\n";
+        var tab = "\t";
+
+        var async = this.async();
+        var finish = function(){
+            grunt.log.ok();
+            async(true)
+        }
+        var files_etags = {};
+        var export_apache = function(files_etags,output_file){
+            var output = "";
+            for( var file in files_etags ){
+                var url = files_etags[file].url;
+                var etag = files_etags[file].etag;
+
+                url = url.substr(0,1)=="/"?url:"/"+url;
+
+                output += '<Location "'+url+'">' + eol;
+                output += tab+'Header set ETag "'+etag+'"' + eol;
+                output += '</Location>' + eol;
+            }
+            if( fs.existsSync(output_file) ) fs.unlinkSync(output_file)
+            fs.writeFileSync(output_file, output)
+        }
+        var export_nginx = function(files_etags,output_file){
+            var output = "";
+            for( var file in files_etags ){
+                var url = files_etags[file].url;
+                var etag = files_etags[file].etag;
+
+                url = url.substr(0,1)=="/"?url:"/"+url;
+
+                output += 'location '+url+' {' + eol;
+                output += tab+'add_header ETag '+etag+'' + eol;
+                output += '}' + eol;
+            }
+            if( fs.existsSync(output_file) ) fs.unlinkSync(output_file)
+            fs.writeFileSync(output_file, output)
+        }
+
+        wrench.mkdirSyncRecursive(options.output, "0777");
+        var curFiles = wrench.readdirSyncRecursive( options.src );
+        var curLength = 0;
+        for( var n in curFiles ){
+            var f = options.src+curFiles[n];
+            if( fs.statSync(f).isFile() ){
+                sha1_file(options.src, curFiles[n],function(relfile, f, d){
+                    files_etags[f] = {
+                        url:relfile,
+                        etag:d
+                    };
+                    curLength++;
+                    if( curLength == curFiles.length ){
+                        for( var n in options.format){
+                            if( n == "apache"){
+                                export_apache(files_etags, options.output+options.format[n]);
+                            }else{
+                                export_nginx(files_etags, options.output+options.format[n]);
+                            }
+                        }
+                        finish();
+                    }
+                })
+            }else{
+                curLength++;
+            }
+        }
+
     });
 
+    function sha1_file(base_url, relfile, then){
+// change the algo to sha1, sha256 etc according to your requirements
+        var algo = 'sha1';
+        var shasum = crypto.createHash(algo);
 
+        var file = base_url+relfile;
+        var enc = file.match("[.](css|html|htm)")?'utf8':null;
+        fs.readFile(file, enc, function (err,data) {
+            if (err) {
+                return console.log(err);
+            }
+            shasum.update( data );
+            then(relfile, file, shasum.digest('hex'));
+        });
+    }
 };
