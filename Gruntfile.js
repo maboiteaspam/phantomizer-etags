@@ -25,6 +25,21 @@ module.exports = function(grunt) {
             },
             src: ['documentation/**']
         },
+        release: {
+            options: {
+                bump: true,
+                add: false,
+                commit: false,
+                npm: false,
+                npmtag: true,
+                tagName: '<%= version %>',
+                github: {
+                    repo: 'maboiteaspam/phantomizer-etags',
+                    usernameVar: 'GITHUB_USERNAME',
+                    passwordVar: 'GITHUB_PASSWORD'
+                }
+            }
+        },
         'phantomizer-etags': {
             options: {
             },
@@ -37,6 +52,7 @@ module.exports = function(grunt) {
     });
     grunt.loadNpmTasks('grunt-docco');
     grunt.loadNpmTasks('grunt-gh-pages');
+    grunt.loadNpmTasks('grunt-release');
     grunt.loadTasks('tasks');
 
     grunt.registerTask('cleanup-grunt-temp', [],function(){
