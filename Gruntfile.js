@@ -41,6 +41,7 @@ module.exports = function(grunt) {
 
     grunt.registerTask('cleanup-grunt-temp', [],function(){
         wrench.rmdirSyncRecursive(__dirname + '/.grunt', !true);
+        wrench.rmdirSyncRecursive(__dirname + '/documentation', !true);
     });
     grunt.registerTask('default', ['docco','gh-pages', 'cleanup-grunt-temp']);
     grunt.registerTask('etags', ['phantomizer-etags']);
