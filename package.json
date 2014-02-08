@@ -1,6 +1,6 @@
 {
   "name": "phantomizer-etags",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "private": true,
   "description": "Asset's Etags generator for phantomizer app",
   "keywords": "",
