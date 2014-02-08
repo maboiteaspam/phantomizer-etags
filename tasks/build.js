@@ -12,20 +12,20 @@ module.exports = function(grunt) {
   grunt.registerMultiTask("phantomizer-etags",
     "Generates apache/nginx etags headers for phantomizer app", function(){
 
-    var options = this.options({
-      src:"src/",
-      format:{
-        "apache":"etags.apache.include",
-        "nginx":"etags.nginx.include"
-      },
-      output:"output/"
-    });
+      var options = this.options({
+        src:"src/",
+        format:{
+          "apache":"etags.apache.include",
+          "nginx":"etags.nginx.include"
+        },
+        output:"output/"
+      });
 
-    var async = this.async();
-    var finish = function(){
-      grunt.log.ok();
-      async(true);
-    }
+      var async = this.async();
+      var finish = function(){
+        grunt.log.ok();
+        async(true);
+      }
 
       grunt.file.mkdir(options.output);
       var curFiles = wrench.readdirSyncRecursive( options.src );
@@ -43,34 +43,34 @@ module.exports = function(grunt) {
 
 
 
-    for( var n in curFiles ){
-      var f = options.src+curFiles[n];
-      if( grunt.file.exists(f) ){
-        sha1_file(options.src, curFiles[n],function(relfile, f, d){
-          files_etags[f] = {
-            url:relfile,
-            etag:d
-          };
+      for( var n in curFiles ){
+        var f = options.src+curFiles[n];
+        if( grunt.file.exists(f) ){
+          sha1_file(options.src, curFiles[n],function(relfile, f, d){
+            files_etags[f] = {
+              url:relfile,
+              etag:d
+            };
+            bar.tick();
+            curLength++;
+            if( curLength == curFiles.length ){
+              for( var n in options.format){
+                if( n == "apache"){
+                  export_apache(files_etags, options.output+options.format[n]);
+                }else{
+                  export_nginx(files_etags, options.output+options.format[n]);
+                }
+              }
+              finish();
+            }
+          })
+        }else{
           bar.tick();
           curLength++;
-          if( curLength == curFiles.length ){
-            for( var n in options.format){
-              if( n == "apache"){
-                export_apache(files_etags, options.output+options.format[n]);
-              }else{
-                export_nginx(files_etags, options.output+options.format[n]);
-              }
-            }
-            finish();
-          }
-        })
-      }else{
-        bar.tick();
-        curLength++;
+        }
       }
-    }
 
-  });
+    });
 
   function export_apache(files_etags,output_file){
 
