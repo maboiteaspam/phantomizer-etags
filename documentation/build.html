@@ -27,121 +27,135 @@
 
 module.exports = <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(grunt)</span> {</span>
 
-    <span class="hljs-keyword">var</span> wrench = <span class="hljs-built_in">require</span>(<span class="hljs-string">'wrench'</span>),
-        util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'util'</span>);</pre></div>
+  <span class="hljs-keyword">var</span> wrench = <span class="hljs-built_in">require</span>(<span class="hljs-string">'wrench'</span>);
+  <span class="hljs-keyword">var</span> path = <span class="hljs-built_in">require</span>(<span class="hljs-string">"path"</span>);
+  <span class="hljs-keyword">var</span> fs = <span class="hljs-built_in">require</span>(<span class="hljs-string">"fs"</span>);
+  <span class="hljs-keyword">var</span> crypto = <span class="hljs-built_in">require</span>(<span class="hljs-string">'crypto'</span>);
+  <span class="hljs-keyword">var</span> ProgressBar = <span class="hljs-built_in">require</span>(<span class="hljs-string">'progress'</span>);
+
+
+  grunt.registerMultiTask(<span class="hljs-string">"phantomizer-etags"</span>,
+    <span class="hljs-string">"Generates apache/nginx etags headers for phantomizer app"</span>, <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">()</span>{</span>
+
+      <span class="hljs-keyword">var</span> options = <span class="hljs-keyword">this</span>.options({
+        src:<span class="hljs-string">"src/"</span>,
+        format:{
+          <span class="hljs-string">"apache"</span>:<span class="hljs-string">"etags.apache.include"</span>,
+          <span class="hljs-string">"nginx"</span>:<span class="hljs-string">"etags.nginx.include"</span>
+        },
+        output:<span class="hljs-string">"output/"</span>
+      });
+
+      <span class="hljs-keyword">var</span> async = <span class="hljs-keyword">this</span>.async();
+      <span class="hljs-keyword">var</span> finish = <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">()</span>{</span>
+        grunt.log.ok();
+        async(<span class="hljs-literal">true</span>);
+      }
+
+      grunt.file.mkdir(options.output);
+      <span class="hljs-keyword">var</span> curFiles = wrench.readdirSyncRecursive( options.src );
+      <span class="hljs-keyword">var</span> curLength = <span class="hljs-number">0</span>;
+      <span class="hljs-keyword">var</span> files_etags = {};</pre></div>
         
       
         
-        <p>-</p>
+        <p>initialize a progress bar</p>
 
         
-          <div class='highlight'><pre>    <span class="hljs-keyword">var</span> path        = <span class="hljs-built_in">require</span>(<span class="hljs-string">"path"</span>);
-    <span class="hljs-keyword">var</span> fs          = <span class="hljs-built_in">require</span>(<span class="hljs-string">"fs"</span>);
-    <span class="hljs-keyword">var</span> crypto = <span class="hljs-built_in">require</span>(<span class="hljs-string">'crypto'</span>);
+          <div class='highlight'><pre>      <span class="hljs-keyword">var</span> bar = <span class="hljs-keyword">new</span> ProgressBar(<span class="hljs-string">' done=[:current/:total] elapsed=[:elapseds] sprint=[:percent] eta=[:etas] [:bar]'</span>, {
+        complete: <span class="hljs-string">'#'</span>
+        , incomplete: <span class="hljs-string">'-'</span>
+        , width: <span class="hljs-number">80</span>
+        , total: curFiles.length
+      });
 
 
-    grunt.registerMultiTask(<span class="hljs-string">"phantomizer-etags"</span>, <span class="hljs-string">"Asset's Etags generator for phantomizer app"</span>, <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">()</span>{</span>
 
-
-        <span class="hljs-keyword">var</span> options = <span class="hljs-keyword">this</span>.options({
-            src:<span class="hljs-string">"src/"</span>,
-            format:{
-                <span class="hljs-string">"apache"</span>:<span class="hljs-string">"etags.apache.include"</span>,
-                <span class="hljs-string">"nginx"</span>:<span class="hljs-string">"etags.nginx.include"</span>
-            },
-            output:<span class="hljs-string">"output/"</span>
-        });
-
-        <span class="hljs-keyword">var</span> eol = <span class="hljs-string">"\n"</span>;
-        <span class="hljs-keyword">var</span> tab = <span class="hljs-string">"\t"</span>;
-
-        <span class="hljs-keyword">var</span> async = <span class="hljs-keyword">this</span>.async();
-        <span class="hljs-keyword">var</span> finish = <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">()</span>{</span>
-            grunt.log.ok();
-            async(<span class="hljs-literal">true</span>)
-        }
-        <span class="hljs-keyword">var</span> files_etags = {};
-        <span class="hljs-keyword">var</span> export_apache = <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(files_etags,output_file)</span>{</span>
-            <span class="hljs-keyword">var</span> output = <span class="hljs-string">""</span>;
-            <span class="hljs-keyword">for</span>( <span class="hljs-keyword">var</span> file <span class="hljs-keyword">in</span> files_etags ){
-                <span class="hljs-keyword">var</span> url = files_etags[file].url;
-                <span class="hljs-keyword">var</span> etag = files_etags[file].etag;
-
-                url = url.substr(<span class="hljs-number">0</span>,<span class="hljs-number">1</span>)==<span class="hljs-string">"/"</span>?url:<span class="hljs-string">"/"</span>+url;
-
-                output += <span class="hljs-string">'&lt;Location "'</span>+url+<span class="hljs-string">'"&gt;'</span> + eol;
-                output += tab+<span class="hljs-string">'Header set ETag "'</span>+etag+<span class="hljs-string">'"'</span> + eol;
-                output += <span class="hljs-string">'&lt;/Location&gt;'</span> + eol;
+      <span class="hljs-keyword">for</span>( <span class="hljs-keyword">var</span> n <span class="hljs-keyword">in</span> curFiles ){
+        <span class="hljs-keyword">var</span> f = options.src+curFiles[n];
+        <span class="hljs-keyword">if</span>( grunt.file.exists(f) ){
+          sha1_file(options.src, curFiles[n],<span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(relfile, f, d)</span>{</span>
+            files_etags[f] = {
+              url:relfile,
+              etag:d
+            };
+            bar.tick();
+            curLength++;
+            <span class="hljs-keyword">if</span>( curLength == curFiles.length ){
+              <span class="hljs-keyword">for</span>( <span class="hljs-keyword">var</span> n <span class="hljs-keyword">in</span> options.format){
+                <span class="hljs-keyword">if</span>( n == <span class="hljs-string">"apache"</span>){
+                  export_apache(files_etags, options.output+options.format[n]);
+                }<span class="hljs-keyword">else</span>{
+                  export_nginx(files_etags, options.output+options.format[n]);
+                }
+              }
+              finish();
             }
-            <span class="hljs-keyword">if</span>( fs.existsSync(output_file) ) fs.unlinkSync(output_file)
-            fs.writeFileSync(output_file, output)
+          })
+        }<span class="hljs-keyword">else</span>{
+          bar.tick();
+          curLength++;
         }
-        <span class="hljs-keyword">var</span> export_nginx = <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(files_etags,output_file)</span>{</span>
-            <span class="hljs-keyword">var</span> output = <span class="hljs-string">""</span>;
-            <span class="hljs-keyword">for</span>( <span class="hljs-keyword">var</span> file <span class="hljs-keyword">in</span> files_etags ){
-                <span class="hljs-keyword">var</span> url = files_etags[file].url;
-                <span class="hljs-keyword">var</span> etag = files_etags[file].etag;
-
-                url = url.substr(<span class="hljs-number">0</span>,<span class="hljs-number">1</span>)==<span class="hljs-string">"/"</span>?url:<span class="hljs-string">"/"</span>+url;
-
-                output += <span class="hljs-string">'location '</span>+url+<span class="hljs-string">' {'</span> + eol;
-                output += tab+<span class="hljs-string">'add_header ETag '</span>+etag+<span class="hljs-string">''</span> + eol;
-                output += <span class="hljs-string">'}'</span> + eol;
-            }
-            <span class="hljs-keyword">if</span>( fs.existsSync(output_file) ) fs.unlinkSync(output_file)
-            fs.writeFileSync(output_file, output)
-        }
-
-        wrench.mkdirSyncRecursive(options.output, <span class="hljs-string">"0777"</span>);
-        <span class="hljs-keyword">var</span> curFiles = wrench.readdirSyncRecursive( options.src );
-        <span class="hljs-keyword">var</span> curLength = <span class="hljs-number">0</span>;
-        <span class="hljs-keyword">for</span>( <span class="hljs-keyword">var</span> n <span class="hljs-keyword">in</span> curFiles ){
-            <span class="hljs-keyword">var</span> f = options.src+curFiles[n];
-            <span class="hljs-keyword">if</span>( fs.statSync(f).isFile() ){
-                sha1_file(options.src, curFiles[n],<span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(relfile, f, d)</span>{</span>
-                    files_etags[f] = {
-                        url:relfile,
-                        etag:d
-                    };
-                    curLength++;
-                    <span class="hljs-keyword">if</span>( curLength == curFiles.length ){
-                        <span class="hljs-keyword">for</span>( <span class="hljs-keyword">var</span> n <span class="hljs-keyword">in</span> options.format){
-                            <span class="hljs-keyword">if</span>( n == <span class="hljs-string">"apache"</span>){
-                                export_apache(files_etags, options.output+options.format[n]);
-                            }<span class="hljs-keyword">else</span>{
-                                export_nginx(files_etags, options.output+options.format[n]);
-                            }
-                        }
-                        finish();
-                    }
-                })
-            }<span class="hljs-keyword">else</span>{
-                curLength++;
-            }
-        }
+      }
 
     });
 
-    <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">sha1_file</span><span class="hljs-params">(base_url, relfile, then)</span>{</span></pre></div>
+  <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">export_apache</span><span class="hljs-params">(files_etags,output_file)</span>{</span>
+
+    <span class="hljs-keyword">var</span> eol = <span class="hljs-string">"\n"</span>;
+    <span class="hljs-keyword">var</span> tab = <span class="hljs-string">"\t"</span>;
+    <span class="hljs-keyword">var</span> output = <span class="hljs-string">""</span>;
+
+    <span class="hljs-keyword">for</span>( <span class="hljs-keyword">var</span> file <span class="hljs-keyword">in</span> files_etags ){
+      <span class="hljs-keyword">var</span> url = files_etags[file].url;
+      <span class="hljs-keyword">var</span> etag = files_etags[file].etag;
+
+      url = url.substr(<span class="hljs-number">0</span>,<span class="hljs-number">1</span>)==<span class="hljs-string">"/"</span>?url:<span class="hljs-string">"/"</span>+url;
+
+      output += <span class="hljs-string">'&lt;Location "'</span>+url+<span class="hljs-string">'"&gt;'</span> + eol;
+      output += tab+<span class="hljs-string">'Header set ETag "'</span>+etag+<span class="hljs-string">'"'</span> + eol;
+      output += <span class="hljs-string">'&lt;/Location&gt;'</span> + eol;
+    }
+    grunt.file.write(output_file, output);
+  }
+  <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">export_nginx</span><span class="hljs-params">(files_etags,output_file)</span>{</span>
+
+    <span class="hljs-keyword">var</span> eol = <span class="hljs-string">"\n"</span>;
+    <span class="hljs-keyword">var</span> tab = <span class="hljs-string">"\t"</span>;
+    <span class="hljs-keyword">var</span> output = <span class="hljs-string">""</span>;
+
+    <span class="hljs-keyword">for</span>( <span class="hljs-keyword">var</span> file <span class="hljs-keyword">in</span> files_etags ){
+      <span class="hljs-keyword">var</span> url = files_etags[file].url;
+      <span class="hljs-keyword">var</span> etag = files_etags[file].etag;
+
+      url = url.substr(<span class="hljs-number">0</span>,<span class="hljs-number">1</span>)==<span class="hljs-string">"/"</span>?url:<span class="hljs-string">"/"</span>+url;
+
+      output += <span class="hljs-string">'location '</span>+url+<span class="hljs-string">' {'</span> + eol;
+      output += tab+<span class="hljs-string">'add_header ETag '</span>+etag+<span class="hljs-string">''</span> + eol;
+      output += <span class="hljs-string">'}'</span> + eol;
+    }
+    grunt.file.write(output_file, output);
+  }
+  <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">sha1_file</span><span class="hljs-params">(base_url, relfile, then)</span>{</span></pre></div>
         
       
         
         <p>change the algo to sha1, sha256 etc according to your requirements</p>
 
         
-          <div class='highlight'><pre>        <span class="hljs-keyword">var</span> algo = <span class="hljs-string">'sha1'</span>;
-        <span class="hljs-keyword">var</span> shasum = crypto.createHash(algo);
+          <div class='highlight'><pre>    <span class="hljs-keyword">var</span> algo = <span class="hljs-string">'sha1'</span>;
+    <span class="hljs-keyword">var</span> shasum = crypto.createHash(algo);
 
-        <span class="hljs-keyword">var</span> file = base_url+relfile;
-        <span class="hljs-keyword">var</span> enc = file.match(<span class="hljs-string">"[.](css|html|htm)"</span>)?<span class="hljs-string">'utf8'</span>:<span class="hljs-literal">null</span>;
-        fs.readFile(file, enc, <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(err,data)</span> {</span>
-            <span class="hljs-keyword">if</span> (err) {
-                <span class="hljs-keyword">return</span> console.log(err);
-            }
-            shasum.update( data );
-            then(relfile, file, shasum.digest(<span class="hljs-string">'hex'</span>));
-        });
-    }
+    <span class="hljs-keyword">var</span> file = base_url+relfile;
+    <span class="hljs-keyword">var</span> enc = file.match(<span class="hljs-string">"[.](css|html|htm|js|txt|appcache|manifest|xml|json)"</span>)?<span class="hljs-string">'utf8'</span>:<span class="hljs-literal">null</span>;
+    fs.readFile(file, enc, <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(err,data)</span> {</span>
+      <span class="hljs-keyword">if</span> (err) {
+        <span class="hljs-keyword">return</span> console.log(err);
+      }
+      shasum.update( data );
+      then(relfile, file, shasum.digest(<span class="hljs-string">'hex'</span>));
+    });
+  }
 };</pre></div>
         
       
